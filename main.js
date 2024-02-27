@@ -49,6 +49,8 @@ const evaluate = (input, vars, debug) => {
 
 const runTests = async tests => {
     let testID = 0;
+    let timeSum = 0;
+
     for (const test of tests) {
         ++testID
 
@@ -56,7 +58,10 @@ const runTests = async tests => {
             await fetchCodeList(codelist);
         }
 
+        const start = performance.now();
         let result = evaluate(test.input, test.vars, testID === 8);
+        const end = performance.now();
+        timeSum += end - start;
 
         console.log(`Test ${testID}: ${result === test.expected ? 'PASS' : 'FAIL'}`);
         if (result !== test.expected) {
@@ -65,6 +70,7 @@ const runTests = async tests => {
             console.log(test);
         }
     }
+    console.log(`Total time: ${timeSum}ms`);
 }
 
 await runTests(tests);

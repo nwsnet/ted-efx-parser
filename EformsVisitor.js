@@ -17,6 +17,7 @@ class EformsVisitor extends EfxVisitor {
         this.debug = false;
         this.vars = {}
         this.retrieveCodeList = this.#retrieveCodeList
+        this.lazyEvaluation = false;
 
         for (const field of fields) {
             this.fields[field.id] = field;
@@ -110,6 +111,9 @@ class EformsVisitor extends EfxVisitor {
 
     visitLogicalOrCondition(ctx) {
         const left = this.getValueFromContext(ctx.booleanExpression(0));
+        if (this.lazyEvaluation && true === left) {
+            return true;
+        }
         const right = this.getValueFromContext(ctx.booleanExpression(1));
 
         if (this.strict && (typeof left !== 'boolean' || typeof right !== 'boolean')) {
@@ -121,6 +125,9 @@ class EformsVisitor extends EfxVisitor {
 
     visitLogicalAndCondition(ctx) {
         const left = this.getValueFromContext(ctx.booleanExpression(0));
+        if (this.lazyEvaluation && false === left) {
+            return false;
+        }
         const right = this.getValueFromContext(ctx.booleanExpression(1));
 
         if (this.strict && (typeof left !== 'boolean' || typeof right !== 'boolean')) {
@@ -145,49 +152,7 @@ class EformsVisitor extends EfxVisitor {
         return haystack.includes(needle);
     }
 
-    visitStringComparison(ctx) {
-        const left = this.getValueFromContext(ctx.stringExpression(0));
-        const right = this.getValueFromContext(ctx.stringExpression(1));
-
-        if (this.strict && (typeof left !== 'string' || typeof right !== 'string')) {
-            throw new Error('Invalid operand type: expected string');
-        }
-
-        return left === right;
-    }
-
-    visitFieldValueComparison(ctx) {
-        const left = this.getValueFromContext(ctx.lateBoundExpression(0));
-        const right = this.getValueFromContext(ctx.lateBoundExpression(1));
-
-        switch (ctx.operator.text) {
-            case '==':
-                return left === right;
-            case '!=':
-                return left !== right;
-            case '<':
-                return left < right;
-            case '>':
-                return left > right;
-            case '<=':
-                return left <= right;
-            case '>=':
-                return left >= right;
-            default:
-                throw new Error('Invalid operator');
-        }
-    }
-
-    visitDateComparison(ctx) {
-        const left = this.getValueFromContext(ctx.dateExpression(0));
-        const right = this.getValueFromContext(ctx.dateExpression(1));
-        const operator = ctx.operator.text;
-
-        // check if luxon types
-        if (this.strict && !(left instanceof DateTime) || !(right instanceof DateTime)) {
-            throw new Error('Invalid operand type: expected date');
-        }
-
+    #generalComparison(operator, left, right) {
         switch (operator) {
             case '==':
                 return left === right;
@@ -204,6 +169,36 @@ class EformsVisitor extends EfxVisitor {
             default:
                 throw new Error('Invalid operator');
         }
+    }
+
+    visitStringComparison(ctx) {
+        const left = this.getValueFromContext(ctx.stringExpression(0));
+        const right = this.getValueFromContext(ctx.stringExpression(1));
+
+        if (this.strict && (typeof left !== 'string' || typeof right !== 'string')) {
+            throw new Error('Invalid operand type: expected string');
+        }
+
+        return this.#generalComparison(ctx.operator.text, left, right);
+    }
+
+    visitFieldValueComparison(ctx) {
+        const left = this.getValueFromContext(ctx.lateBoundExpression(0));
+        const right = this.getValueFromContext(ctx.lateBoundExpression(1));
+
+        return this.#generalComparison(ctx.operator.text, left, right);
+    }
+
+    visitDateComparison(ctx) {
+        const left = this.getValueFromContext(ctx.dateExpression(0));
+        const right = this.getValueFromContext(ctx.dateExpression(1));
+
+        // check if luxon types
+        if (this.strict && !(left instanceof DateTime) || !(right instanceof DateTime)) {
+            throw new Error('Invalid operand type: expected date');
+        }
+
+        return this.#generalComparison(ctx.operator.text, left, right);
     }
 
     visitDurationComparison(ctx) {
@@ -217,20 +212,52 @@ class EformsVisitor extends EfxVisitor {
 
         switch (operator) {
             case '==':
-                return left.equals(right);
+                return +left === +right;
             case '!=':
-                return !left.equals(right);
-            case '<':
-                return left < right;
-            case '>':
-                return left > right;
-            case '<=':
-                return left <= right;
-            case '>=':
-                return left >= right;
+                return +left !== +right;
             default:
-                throw new Error('Invalid operator');
+                return this.#generalComparison(operator, left, right);
         }
+    }
+
+    visitNumericComparison(ctx) {
+        const left = this.getValueFromContext(ctx.numericExpression(0));
+        const right = this.getValueFromContext(ctx.numericExpression(1));
+
+        if (this.strict && (typeof left !== 'number' || typeof right !== 'number')) {
+            throw new Error('Invalid operand type: expected number');
+        }
+
+        return this.#generalComparison(ctx.operator.text, left, right);
+    }
+
+    visitTimeComparison(ctx) {
+        const left = this.getValueFromContext(ctx.timeExpression(0));
+        const right = this.getValueFromContext(ctx.timeExpression(1));
+
+        if (this.strict && !(left instanceof DateTime) || !(right instanceof DateTime)) {
+            throw new Error('Invalid operand type: expected time');
+        }
+
+        switch (ctx.operator.text) {
+            case '==':
+                return +left === +right;
+            case '!=':
+                return +left !== +right;
+            default:
+                return this.#generalComparison(ctx.operator.text, left, right);
+        }
+    }
+
+    visitBooleanComparison(ctx) {
+        const left = this.getValueFromContext(ctx.booleanExpression(0));
+        const right = this.getValueFromContext(ctx.booleanExpression(1));
+
+        if (this.strict && (typeof left !== 'boolean' || typeof right !== 'boolean')) {
+            throw new Error('Invalid operand type: expected boolean');
+        }
+
+        return this.#generalComparison(ctx.operator.text, left, right);
     }
 
     visitDateSubtractionExpression(ctx) {
@@ -244,6 +271,17 @@ class EformsVisitor extends EfxVisitor {
         return left.diff(right);
     }
 
+    visitDurationSubtractionExpression(ctx) {
+        const left = this.getValueFromContext(ctx.durationExpression(0));
+        const right = this.getValueFromContext(ctx.durationExpression(1));
+
+        if (this.strict && !(left instanceof Duration) || !(right instanceof Duration)) {
+            throw new Error('Invalid operand type: expected duration');
+        }
+
+        return left.minus(right);
+    }
+
     // unary functions
 
     visitNotFunction(ctx) {
@@ -252,6 +290,18 @@ class EformsVisitor extends EfxVisitor {
             throw new Error('Invalid operand type: expected boolean');
         }
         return !value;
+    }
+
+    visitPresenceCondition(ctx) {
+        const value = this.getValueFromContext(ctx.children[0]);
+        const isPresent = !this.isUndefined(value);
+
+        switch (ctx.modifier.text.toLowerCase()) {
+            case 'not':
+                return !isPresent;
+            default:
+                return isPresent;
+        }
     }
 
     visitScalarFromFieldReference(ctx) {
@@ -265,6 +315,8 @@ class EformsVisitor extends EfxVisitor {
     visitFieldReferenceWithFieldContextOverride(ctx) {
         return this.visitScalarFromFieldReference(ctx);
     }
+
+    // Literal values
 
     visitStringLiteral(ctx) {
         const rawText = ctx.STRING().getText()
@@ -288,19 +340,6 @@ class EformsVisitor extends EfxVisitor {
 
     visitDurationLiteral(ctx) {
         return Duration.fromISO(ctx.getText(), {});
-    }
-
-    visitPresenceCondition(ctx) {
-
-        const value = this.getValueFromContext(ctx.children[0]);
-        const isPresent = !this.isUndefined(value);
-
-        switch (ctx.modifier.text.toLowerCase()) {
-            case 'not':
-                return !isPresent;
-            default:
-                return isPresent;
-        }
     }
 
     visitCodelistId(ctx) {
