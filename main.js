@@ -23,6 +23,9 @@ const fetchCodeList = async (filename) => codeLists[filename] = await getJson(`h
 
 const fieldMetadata = await getJson('http://localhost:8081/sdk/1.10/basic-meta-data');
 
+// Print out all unique field types
+// console.log(fieldMetadata.fieldsJson.fields.map(f => f.type).filter((v, i, a) => a.indexOf(v) === i))
+
 const evaluate = (input, vars, debug) => {
     const inputStream = new InputStream(input);
     const lexer = new EfxLexer(inputStream);
@@ -53,7 +56,8 @@ const runTests = async tests => {
             await fetchCodeList(codelist);
         }
 
-        const result = evaluate(test.input, test.vars, testID === 5);
+        let result = evaluate(test.input, test.vars, testID === 8);
+
         console.log(`Test ${testID}: ${result === test.expected ? 'PASS' : 'FAIL'}`);
         if (result !== test.expected) {
             console.log(`  Expected: ${test.expected}`);

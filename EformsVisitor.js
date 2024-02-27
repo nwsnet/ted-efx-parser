@@ -1,4 +1,5 @@
 import EfxVisitor from "./sdk/1.10/EfxVisitor.js";
+import {Duration, DateTime} from "luxon";
 
 class EformsVisitor extends EfxVisitor {
     constructor(fieldMetadata) {
@@ -83,8 +84,23 @@ class EformsVisitor extends EfxVisitor {
                 }
                 return value;
             case 'number':
+            case 'integer':
+            case 'amount':
+            case 'measure':
                 return parseFloat(value);
+            case 'date':
+            case 'time':
+                return DateTime.fromISO(value);
             default:
+                console.warn('Unknown field type: ' + fieldDefinition?.type);
+                return value;
+            case 'id':
+            case 'id-ref':
+            case 'email':
+            case 'url':
+            case 'text':
+            case 'text-multilingual':
+            case 'phone':
             case 'code':
                 return value;
         }
@@ -129,15 +145,103 @@ class EformsVisitor extends EfxVisitor {
         return haystack.includes(needle);
     }
 
-    visitCodelistId(ctx) {
-        return this.#getCodeListValues(ctx.getText());
-    }
-
     visitStringComparison(ctx) {
         const left = this.getValueFromContext(ctx.stringExpression(0));
         const right = this.getValueFromContext(ctx.stringExpression(1));
 
+        if (this.strict && (typeof left !== 'string' || typeof right !== 'string')) {
+            throw new Error('Invalid operand type: expected string');
+        }
+
         return left === right;
+    }
+
+    visitFieldValueComparison(ctx) {
+        const left = this.getValueFromContext(ctx.lateBoundExpression(0));
+        const right = this.getValueFromContext(ctx.lateBoundExpression(1));
+
+        switch (ctx.operator.text) {
+            case '==':
+                return left === right;
+            case '!=':
+                return left !== right;
+            case '<':
+                return left < right;
+            case '>':
+                return left > right;
+            case '<=':
+                return left <= right;
+            case '>=':
+                return left >= right;
+            default:
+                throw new Error('Invalid operator');
+        }
+    }
+
+    visitDateComparison(ctx) {
+        const left = this.getValueFromContext(ctx.dateExpression(0));
+        const right = this.getValueFromContext(ctx.dateExpression(1));
+        const operator = ctx.operator.text;
+
+        // check if luxon types
+        if (this.strict && !(left instanceof DateTime) || !(right instanceof DateTime)) {
+            throw new Error('Invalid operand type: expected date');
+        }
+
+        switch (operator) {
+            case '==':
+                return left === right;
+            case '!=':
+                return left !== right;
+            case '<':
+                return left < right;
+            case '>':
+                return left > right;
+            case '<=':
+                return left <= right;
+            case '>=':
+                return left >= right;
+            default:
+                throw new Error('Invalid operator');
+        }
+    }
+
+    visitDurationComparison(ctx) {
+        const left = this.getValueFromContext(ctx.durationExpression(0));
+        const right = this.getValueFromContext(ctx.durationExpression(1));
+        const operator = ctx.operator.text;
+
+        if (this.strict && !(left instanceof Duration) || !(right instanceof Duration)) {
+            throw new Error('Invalid operand type: expected duration');
+        }
+
+        switch (operator) {
+            case '==':
+                return left.equals(right);
+            case '!=':
+                return !left.equals(right);
+            case '<':
+                return left < right;
+            case '>':
+                return left > right;
+            case '<=':
+                return left <= right;
+            case '>=':
+                return left >= right;
+            default:
+                throw new Error('Invalid operator');
+        }
+    }
+
+    visitDateSubtractionExpression(ctx) {
+        const left = this.getValueFromContext(ctx.dateExpression(0));
+        const right = this.getValueFromContext(ctx.dateExpression(1));
+
+        if (this.strict && !(left instanceof DateTime) || !(right instanceof DateTime)) {
+            throw new Error('Invalid operand type: expected date');
+        }
+
+        return left.diff(right);
     }
 
     // unary functions
@@ -170,6 +274,22 @@ class EformsVisitor extends EfxVisitor {
         return rawText;
     }
 
+    visitBooleanLiteral(ctx) {
+        return ctx.getText().toLowerCase() === 'true';
+    }
+
+    visitNumericLiteral(ctx) {
+        return parseFloat(ctx.getText());
+    }
+
+    visitDateLiteral(ctx) {
+        return DateTime.fromISO(ctx.getText());
+    }
+
+    visitDurationLiteral(ctx) {
+        return Duration.fromISO(ctx.getText(), {});
+    }
+
     visitPresenceCondition(ctx) {
 
         const value = this.getValueFromContext(ctx.children[0]);
@@ -181,6 +301,10 @@ class EformsVisitor extends EfxVisitor {
             default:
                 return isPresent;
         }
+    }
+
+    visitCodelistId(ctx) {
+        return this.#getCodeListValues(ctx.getText());
     }
 
     // utility functions
