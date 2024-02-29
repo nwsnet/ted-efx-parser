@@ -1,7 +1,7 @@
 import EfxVisitor from "./sdk/1.10/EfxVisitor.js";
 import {Duration, DateTime} from "luxon";
 
-class EformsVisitor extends EfxVisitor {
+class BasicVisitor extends EfxVisitor {
     constructor(fieldMetadata) {
         super();
         const fields = fieldMetadata?.fieldsJson?.fields
@@ -15,8 +15,8 @@ class EformsVisitor extends EfxVisitor {
         this.codeLists = {}
         this.strict = false;
         this.debug = false;
-        this.vars = {}
-        this.retrieveCodeList = this.#retrieveCodeList
+        this.retrieveCodeList = this.#defaultRetrieveCodeList
+        this.retrieveValue = this.#defaultRetrieveValue
         this.lazyEvaluation = false;
 
         for (const field of fields) {
@@ -28,8 +28,12 @@ class EformsVisitor extends EfxVisitor {
         }
     }
 
-    #retrieveCodeList(filename) {
+    #defaultRetrieveCodeList(filename) {
         throw new Error(`Codelist ${filename} not found `);
+    }
+
+    #defaultRetrieveValue(fieldDefinition) {
+        throw new Error(`Field ${fieldDefinition.id} not found`);
     }
 
     #getCodeListValues(codelistId, code) {
@@ -49,31 +53,12 @@ class EformsVisitor extends EfxVisitor {
         return codelist?.codes?.map(x => x.codeValue) || [];
     }
 
-    setVars(vars, deleteOld) {
-        if (deleteOld) {
-            for (const fieldId in this.vars) {
-                if (!vars[fieldId]) {
-                    delete this.vars[fieldId];
-                }
-            }
-            this.vars = {}
-        }
-        for (const fieldId in vars) {
-            if (this.fields[fieldId]) {
-                this.fields[fieldId].value = vars[fieldId];
-            } else {
-                console.warn('Field not found for var:' + fieldId);
-            }
-        }
-        this.vars = { ...this.vars, ...vars };
-    }
-
     getValueForField(fieldId) {
         if (typeof this.fields[fieldId] === "undefined") {
             return null;
         }
         const fieldDefinition = this.fields[fieldId]
-        const value = fieldDefinition?.value || null;
+        const value = this.retrieveValue(fieldDefinition);
         if (value === null) {
             return null;
         }
@@ -406,4 +391,4 @@ class EformsVisitor extends EfxVisitor {
     }
 }
 
-export default EformsVisitor;
+export default BasicVisitor;

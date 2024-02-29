@@ -8,7 +8,7 @@ import {tests} from "./tests/basic.js";
 
 import EfxLexer from './sdk/1.10/EfxLexer.js';
 import EfxParser from './sdk/1.10/EfxParser.js';
-import EformsVisitor from './EformsVisitor.js';
+import BasicVisitor from "./BasicVisitor.js";
 
 const codeLists = {}
 const cache = {}
@@ -32,10 +32,10 @@ const evaluate = (input, vars, debug) => {
     const tokenStream = new CommonTokenStream(lexer);
     const parser = new EfxParser(tokenStream);
     const tree = parser.singleExpression();
-    const visitor = new EformsVisitor(JSON.parse(JSON.stringify(fieldMetadata)));
+    const visitor = new BasicVisitor(JSON.parse(JSON.stringify(fieldMetadata)));
     visitor.debug = debug
     visitor.strict = true
-    visitor.setVars(vars)
+    visitor.retrieveValue = (fieldDefinition) => vars[fieldDefinition.id] || null;
 
     visitor.retrieveCodeList = (filename) => {
         if (typeof codeLists[filename] === 'undefined') {
@@ -59,7 +59,7 @@ const runTests = async tests => {
         }
 
         const start = performance.now();
-        let result = evaluate(test.input, test.vars, testID === 8);
+        let result = evaluate(test.input, test.vars, true);
         const end = performance.now();
         timeSum += end - start;
 
