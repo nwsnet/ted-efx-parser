@@ -32,9 +32,7 @@ class BasicVisitor extends EfxVisitor {
             throw new Error(`Codelist ${codelistId} not found`);
         }
 
-        const filename = metadata?.filename;
-
-        const codelist = this.retrieveCodeList(filename);
+        const codelist = this.retrieveCodeList(metadata);
 
         if (this.strict && !codelist) {
             throw new Error(`Codelist ${codelistId} not found`);
