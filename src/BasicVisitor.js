@@ -1,6 +1,13 @@
 import EfxVisitor from "../sdks/1.10/EfxVisitor.js";
 import {Duration, DateTime} from "luxon";
 
+/**
+ * The BasicVisitor class supports basic operations on EFX expressions.
+ * It does NOT include support for iterative expressions.
+ *
+ * @class
+ * @extends EfxVisitor the ANTlr4 generated visitor class
+ */
 class BasicVisitor extends EfxVisitor {
     constructor(fields, codeLists) {
         super();
