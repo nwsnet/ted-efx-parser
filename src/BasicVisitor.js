@@ -277,6 +277,16 @@ class BasicVisitor extends EfxVisitor {
         return !value;
     }
 
+    visitCountFunction(ctx) {
+        const value = this.getChildrenValuesFromContext(ctx);
+
+        if (this.strict && !Array.isArray(value)) {
+            throw new Error('Invalid operand type: expected array, but got ' + typeof value);
+        }
+
+        return value.length;
+    }
+
     visitPresenceCondition(ctx) {
         const value = this.getValueFromContext(ctx.children[0]);
         const isPresent = !this.isUndefined(value);
