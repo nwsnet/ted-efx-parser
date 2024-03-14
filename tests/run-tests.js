@@ -7,7 +7,7 @@
  * AND SET THE SDK_VERSION to the version of the editor you are using.
  * +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  */
-import {tests} from "./data/basic.js";
+import {tests} from "./data/iterative.js";
 
 import createEfxParser from "../efx-parser.js";
 import {fetchCodeList, fetchFieldMetadata, getCodeList, mapListToIdKeys} from "./util/eforms-notice-editor.js";

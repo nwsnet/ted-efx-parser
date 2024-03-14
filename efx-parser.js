@@ -2,6 +2,7 @@ import {CommonTokenStream, InputStream} from "antlr4";
 import EfxLexer from "./sdks/1.10/EfxLexer.js";
 import EfxParser from "./sdks/1.10/EfxParser.js";
 import BasicVisitor from "./src/BasicVisitor.js";
+import IterativeVisitor from "./src/IterativeVisitor.js";
 
 /**
  * A function that creates an EfxParser function.
@@ -17,7 +18,7 @@ const createEfxParser = (fields, codeLists, configureVisitor) => (input) => {
   const tokenStream = new CommonTokenStream(lexer);
   const parser = new EfxParser(tokenStream);
   const tree = parser.singleExpression();
-  const visitor = new BasicVisitor(fields, codeLists);
+  const visitor = new IterativeVisitor(fields, codeLists);
 
   // Some default configuration
   visitor.debug = false;
