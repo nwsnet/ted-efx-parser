@@ -2,30 +2,20 @@ import EfxVisitor from "./sdk/1.10/EfxVisitor.js";
 import {Duration, DateTime} from "luxon";
 
 class BasicVisitor extends EfxVisitor {
-    constructor(fieldMetadata) {
+    constructor(fields, codeLists) {
         super();
-        const fields = fieldMetadata?.fieldsJson?.fields
-        const codeLists = fieldMetadata?.codelistsJson?.codelists
 
         if (typeof fields === 'undefined') {
             throw new Error('Invalid field metadata');
         }
 
-        this.fields = {}
-        this.codeLists = {}
+        this.fields = fields
+        this.codeLists = codeLists
         this.strict = false;
         this.debug = false;
         this.retrieveCodeList = this.#defaultRetrieveCodeList
         this.retrieveValue = this.#defaultRetrieveValue
         this.lazyEvaluation = false;
-
-        for (const field of fields) {
-            this.fields[field.id] = field;
-        }
-
-        for (const codelist of codeLists) {
-            this.codeLists[codelist.id] = codelist;
-        }
     }
 
     #defaultRetrieveCodeList(filename) {
