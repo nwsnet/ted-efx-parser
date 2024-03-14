@@ -1,4 +1,4 @@
-import EfxVisitor from "./sdk/1.10/EfxVisitor.js";
+import EfxVisitor from "../sdks/1.10/EfxVisitor.js";
 import {Duration, DateTime} from "luxon";
 
 class BasicVisitor extends EfxVisitor {
@@ -120,6 +120,10 @@ class BasicVisitor extends EfxVisitor {
             haystack = [haystack];
         }
 
+        if (null === needle) {
+            return false;
+        }
+
         if (this.strict && (!Array.isArray(haystack) || typeof needle !== 'string')) {
             throw new Error('Invalid operand type: expected array and string');
         }
@@ -150,8 +154,12 @@ class BasicVisitor extends EfxVisitor {
         const left = this.getValueFromContext(ctx.stringExpression(0));
         const right = this.getValueFromContext(ctx.stringExpression(1));
 
+        if (left === null ^ right === null) {
+            return false;
+        }
+
         if (this.strict && (typeof left !== 'string' || typeof right !== 'string')) {
-            throw new Error('Invalid operand type: expected string');
+            throw new Error('Invalid operand type: expected string, but got ' + typeof left + ' and ' + typeof right);
         }
 
         return this.#generalComparison(ctx.operator.text, left, right);
@@ -161,6 +169,10 @@ class BasicVisitor extends EfxVisitor {
         const left = this.getValueFromContext(ctx.lateBoundExpression(0));
         const right = this.getValueFromContext(ctx.lateBoundExpression(1));
 
+        if (left === null ^ right === null) {
+            return false;
+        }
+
         return this.#generalComparison(ctx.operator.text, left, right);
     }
 
@@ -168,9 +180,13 @@ class BasicVisitor extends EfxVisitor {
         const left = this.getValueFromContext(ctx.dateExpression(0));
         const right = this.getValueFromContext(ctx.dateExpression(1));
 
+        if (left === null ^ right === null) {
+            return false;
+        }
+
         // check if luxon types
         if (this.strict && !(left instanceof DateTime) || !(right instanceof DateTime)) {
-            throw new Error('Invalid operand type: expected date');
+            throw new Error('Invalid operand type: expected date, but got ' + typeof left + ' and ' + typeof right);
         }
 
         return this.#generalComparison(ctx.operator.text, left, right);
@@ -181,8 +197,12 @@ class BasicVisitor extends EfxVisitor {
         const right = this.getValueFromContext(ctx.durationExpression(1));
         const operator = ctx.operator.text;
 
+        if (left === null ^ right === null) {
+            return false;
+        }
+
         if (this.strict && !(left instanceof Duration) || !(right instanceof Duration)) {
-            throw new Error('Invalid operand type: expected duration');
+            throw new Error('Invalid operand type: expected duration, but got ' + typeof left + ' and ' + typeof right);
         }
 
         switch (operator) {
@@ -199,8 +219,12 @@ class BasicVisitor extends EfxVisitor {
         const left = this.getValueFromContext(ctx.numericExpression(0));
         const right = this.getValueFromContext(ctx.numericExpression(1));
 
+        if (left === null ^ right === null) {
+            return false;
+        }
+
         if (this.strict && (typeof left !== 'number' || typeof right !== 'number')) {
-            throw new Error('Invalid operand type: expected number');
+            throw new Error('Invalid operand type: expected number, but got ' + typeof left + ' and ' + typeof right);
         }
 
         return this.#generalComparison(ctx.operator.text, left, right);
@@ -210,8 +234,12 @@ class BasicVisitor extends EfxVisitor {
         const left = this.getValueFromContext(ctx.timeExpression(0));
         const right = this.getValueFromContext(ctx.timeExpression(1));
 
+        if (left === null ^ right === null) {
+            return false;
+        }
+
         if (this.strict && !(left instanceof DateTime) || !(right instanceof DateTime)) {
-            throw new Error('Invalid operand type: expected time');
+            throw new Error('Invalid operand type: expected time, but got ' + typeof left + ' and ' + typeof right);
         }
 
         switch (ctx.operator.text) {
@@ -228,8 +256,12 @@ class BasicVisitor extends EfxVisitor {
         const left = this.getValueFromContext(ctx.booleanExpression(0));
         const right = this.getValueFromContext(ctx.booleanExpression(1));
 
+        if (left === null ^ right === null) {
+            return false;
+        }
+
         if (this.strict && (typeof left !== 'boolean' || typeof right !== 'boolean')) {
-            throw new Error('Invalid operand type: expected boolean');
+            throw new Error('Invalid operand type: expected boolean, but got ' + typeof left + ' and ' + typeof right);
         }
 
         return this.#generalComparison(ctx.operator.text, left, right);
@@ -240,7 +272,7 @@ class BasicVisitor extends EfxVisitor {
         const right = this.getValueFromContext(ctx.dateExpression(1));
 
         if (this.strict && !(left instanceof DateTime) || !(right instanceof DateTime)) {
-            throw new Error('Invalid operand type: expected date');
+            throw new Error('Invalid operand type: expected date, but got ' + typeof left + ' and ' + typeof right);
         }
 
         return left.diff(right);
@@ -251,7 +283,7 @@ class BasicVisitor extends EfxVisitor {
         const right = this.getValueFromContext(ctx.durationExpression(1));
 
         if (this.strict && !(left instanceof Duration) || !(right instanceof Duration)) {
-            throw new Error('Invalid operand type: expected duration');
+            throw new Error('Invalid operand type: expected duration, but got ' + typeof left + ' and ' + typeof right);
         }
 
         return left.minus(right);
@@ -281,7 +313,7 @@ class BasicVisitor extends EfxVisitor {
         const value = this.getValueFromContext(ctx.children[0]);
         const isPresent = !this.isUndefined(value);
 
-        switch (ctx.modifier.text.toLowerCase()) {
+        switch (ctx.modifier?.text?.toLowerCase()) {
             case 'not':
                 return !isPresent;
             default:
